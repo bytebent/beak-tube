@@ -61,6 +61,12 @@ compliance units look unusual as printed; batch 02 checks them by measuring the 
 - **Gape follow** opens the beak with pitch, as sparrows open wider for higher notes.
 - **The tracker** is deterministic, follows one fundamental and reports how sure it is. When it
   is unsure (noise, drums, two voices) the cavity holds its last tuning. [Decided]
+- Built in batch 03 as YIN (de Cheveigné & Kawahara 2002) in two bands: a low band at about
+  12 kHz for 55–850 Hz (10.7 ms window) and a high band at about 96 kHz for 0.8–14 kHz (2.5 ms
+  window; upsampled 2× below 64 kHz host rates). When both are sure the deeper dip wins. The
+  audio is delayed by the tracker's look-ahead, so the cavity arrives on time: the plugin's
+  latency is about 6 ms (288 samples at 48 kHz). Sweeps of 3 octaves a second stay within
+  10 cents with Lag off (`tests.md`).
 
 ## 5. Modes
 
@@ -78,6 +84,10 @@ compliance units look unusual as printed; batch 02 checks them by measuring the 
 
 Size (0–1) scales every length and volume together, on the same scale as Syrinx's Size, so the
 same value gives a matching bird. Track, Gape follow and Mode stay put.
+
+As built: Size scales the trachea, the beak's corner and the body. Tune and Sac tune show real Hz
+and Size does not move them (with Track up the cavity follows the bird's pitch anyway).
+[Proposed]
 
 - Songbird (about 0.25, default): a 3.5 cm trachea.
 - Dove: a sac tuned near 600 Hz.
@@ -103,7 +113,7 @@ text gives a source. Ranges may go somewhat past nature.
 | | `mode` | Song, Parrot, Sac, Boom | Song | Front of the chain |
 | Trachea | `trachlen` | 1.5–200 cm, log | 3.5 cm | Tube length (scaled by Size) |
 | | `trachloss` | 0–1 | 0.3 | Wall loss: ringing to dull |
-| Larynx | `larynx` | 0–1 | 0.6 | Opening into the cavity; smaller is lower |
+| Larynx | `larynx` | 0–1 | 0.6 | Opening into the cavity; smaller is lower (−11 to +7 st around Track and Tune) |
 | OEC | `track` | 0–100% | 90% | How much the resonance follows the pitch |
 | | `tune` | 0.2–10 kHz, log | 4 kHz | Resonance when not tracking |
 | | `lag` | 0–30 ms | 5 ms | Tracking delay |
@@ -112,11 +122,11 @@ text gives a source. Ranges may go somewhat past nature.
 | | `gapefollow` | 0–100% | 60% | Gape opens with pitch |
 | Tongue | `tonguefb` | 0–1 | 0.5 | Front to back (Parrot) |
 | | `tongueht` | 0–1 | 0.3 | Low to high (Parrot) |
-| Sac | `sactune` | 0.2–1.5 kHz, log | 600 Hz | Sac resonance (Sac, Boom) |
+| Sac | `sactune` | 0.2–1.5 kHz, log | 600 Hz | Sac resonance (Sac; Boom divides it by 16) |
 | | `inflate` | 0–1 | 0.8 | How much the sac radiates |
 | Body | `body` | 0–1 | 0 | Sternum resonator level |
 | Output | `spread` | 0–1 | 0.2 | Stereo difference between the tracts |
-| | `radiation` | Off, On | On | Flow to pressure at the beak, as in mouth-tube |
+| | `radiation` | Off, On | On | Flow to pressure at the beak, as in mouth-tube; unity at the mode's own band, so it changes colour more than level |
 | | `mix` | 0–100% | 100% | Dry to processed, dry delayed to line up |
 | | `output` | −24 to +12 dB | 0 dB | |
 | | `bypass` | Off, On | Off | Host bypass, latency kept |
@@ -126,10 +136,27 @@ text gives a source. Ranges may go somewhat past nature.
 Same rules as mouth-tube and Throat:
 
 - Fixed 32-sample blocks; the tracker's latency and the block are reported to the host as one
-  fixed latency.
+  fixed latency (268 samples at 44.1 kHz, 288 at 48 kHz, 544 at 96 kHz).
 - `process()` never allocates. Parameters are read once per block, tracking per block with Lag
   smoothing inside it.
 - Deterministic: same input, same output, at any host buffer size.
 - The C++ port is checked sample by sample against the reference, built with `-ffp-contract=off`.
 
 Engine interface: `new BeakTube(sr)`, `setParam`, `process(inL, inR, outL, outR, n)`.
+
+## 10. Controls to decide after the first listening round
+
+Proposed with the bench; nothing here is built yet.
+
+- **Offset instead of Larynx.** Tune, Larynx and Size all move the same peak, and at Track 90%
+  Tune barely matters. As built, Larynx already acts as an offset of −11 to +7 semitones from
+  where Track and Tune put the cavity. Proposal: call it **Offset**, −12 to +12 semitones, so 0 is
+  the bird trick (resonance on the fundamental) and +12 puts it on the 2nd harmonic. [Proposed]
+- **Sense:** how readily the cavity follows (the tracker's threshold, now fixed at 0.2). Low:
+  only clean pitches move it, so drums and chords leave it put; high: it follows anything
+  roughly periodic. [Proposed]
+- **Tongue as an XY pad** (front–back × low–high) for Parrot, like mouth-tube's vowel chart,
+  instead of two knobs. [Proposed]
+- **Tune and Sac tune in real Hz**, not scaled by Size (§6). [Proposed]
+- **LFOs:** none for now; decided after testing, as for Syrinx. [Open]
+

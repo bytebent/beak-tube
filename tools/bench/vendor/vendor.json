@@ -1,0 +1,10 @@
+{
+  "about": "Syrinx's reference engine, map and test presets, copied unmodified from bytebent/syrinx so the bench can play a bird into beak-tube. tools/bench/build.js refuses to build if a file's hash no longer matches. To update: copy the files again and replace the commit and hashes.",
+  "from": "https://github.com/bytebent/syrinx",
+  "commit": "701f706e92afefaa544ef22f722774e18eeb406e",
+  "files": {
+    "syrinx-maps.js": { "from": "reference/syrinx-maps.js", "sha256": "ead0ab1d97f101f2009baf37888dfc824723e1bfe8b05d4debcd7299e5bec884" },
+    "syrinx-engine.js": { "from": "reference/syrinx-engine.js", "sha256": "c9323d532a909878aa230e7a38def831409376bc55b969cef337a1f236aed9b7" },
+    "syrinx-presets.js": { "from": "reference/presets.js", "sha256": "afc0b16bb2f71630e961b9c014895d78a6a12763e91379cc3bf0a30861a845c0" }
+  }
+}

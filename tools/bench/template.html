@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>beak-tube</title>
+<style>
+:root{
+  --platinum:#dcdce0; --platinum-hi:#ececef; --etch:#9c9ca4; --ink:#000; --ink-soft:#4a4a52; --inset:#f4f4f6; --desk:#b9b9c0;
+  /* beak-tube: yellow, with Syrinx's green for the source */
+  --acc:#d9a514; --acc-dk:#8f6a06; --acc-lt:#f6dc7a; --acc-deep:#5e4503; --acc-mid:#c28f0c; --acc-hi:#ecc340;
+  --green:#4fae36; --green-dk:#2f7a1f; --green-lt:#a9e08f;
+  --graphite:#6e6e78; --screen:#0b0b0e; --lcd:#f6dc7a;
+  --ui:"Lucida Grande","Lucida Sans Unicode",Geneva,Verdana,sans-serif; --mono:Monaco,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:radial-gradient(circle at 1px 1px, rgba(0,0,0,.09) 1px, transparent 1.5px) 0 0/6px 6px, var(--desk);
+  font:13px/1.45 var(--ui); color:var(--ink); padding:24px 16px 40px; -webkit-user-select:none; user-select:none}
+.window{max-width:1060px;margin:0 auto;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,.55) 0 1px, rgba(255,255,255,0) 1px 2px, rgba(0,0,0,.035) 2px 3px, rgba(0,0,0,0) 3px 4px), var(--platinum);
+  border:1px solid #7d7d86;border-radius:9px;box-shadow:0 1px 0 #fff inset, 0 12px 32px rgba(0,0,0,.22);overflow:hidden}
+.titlebar{display:flex;align-items:center;gap:12px;padding:9px 14px 8px;background:linear-gradient(#f6f6f8,#d6d6db);border-bottom:1px solid #8e8e96}
+.mark{width:22px;height:18px;border-radius:3px;background:var(--graphite);box-shadow:0 0 0 1px rgba(0,0,0,.35);position:relative;flex:none;overflow:hidden}
+.mark::before{content:"";position:absolute;left:0;right:0;top:5px;height:3px;background:var(--green)}
+.mark::after{content:"";position:absolute;left:0;right:0;top:10px;height:3px;background:var(--acc)}
+.titlebar h1{margin:0;font-size:15px;font-weight:700;letter-spacing:-.2px}
+.titlebar .sub{color:var(--ink-soft);font-size:11px}
+.titlebar .sub .ver{margin-left:6px;color:#7a7a84}
+.titlebar .tag{margin-left:auto;color:var(--ink-soft);font-size:11px}
+.body{padding:14px 18px 16px}
+
+/* screen */
+.screen{background:var(--screen);border-radius:6px;padding:10px;box-shadow:0 0 0 1px #000,0 2px 6px rgba(0,0,0,.5) inset;position:relative}
+.views{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:10px}
+.view{position:relative}
+.view canvas{display:block;width:100%;height:190px;border-radius:3px;background:#060608}
+.view canvas.axis{position:absolute;inset:0;background:transparent;pointer-events:none}
+.view .lbl{position:absolute;left:8px;top:6px;font:10px/1 var(--mono);color:var(--lcd);opacity:.85;letter-spacing:1px;pointer-events:none}
+.view .key{position:absolute;right:8px;top:6px;font:10px/1 var(--mono);letter-spacing:1px;pointer-events:none;display:flex;gap:10px}
+.view .key i{font-style:normal}
+.readouts{display:flex;flex-wrap:wrap;gap:4px 18px;font:11px/1 var(--mono);color:var(--lcd);margin-top:8px;letter-spacing:1px}
+.readouts b{font-weight:400;opacity:.6;margin-right:6px}
+.readouts .warn{color:#000;background:var(--acc);padding:1px 4px;border-radius:2px;margin:-1px -4px}
+.readouts .g{color:var(--green-lt)}
+.chans{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-top:8px}
+.chan{font:11px/1.3 var(--mono);color:var(--lcd);letter-spacing:1px;display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center}
+.chan b{font-weight:400;opacity:.6}
+.chan .p{color:var(--green-lt)}
+.chan .bar{height:5px;border-radius:2px;background:rgba(246,220,122,.15);overflow:hidden;min-width:40px}
+.chan .bar i{display:block;height:100%;width:0;background:var(--green)}
+.chan.off{opacity:.3}
+.power{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(11,11,14,.86);border-radius:6px;z-index:2;color:var(--lcd);font:11px var(--mono);letter-spacing:1px;text-align:center;padding:0 16px}
+.power.hide{display:none}
+
+/* controls */
+.rows{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
+fieldset{flex:1 1 auto;margin:0;border:1px solid var(--etch);border-radius:6px;padding:8px 12px 10px;background:rgba(236,236,239,.7);box-shadow:0 1px 0 #fff, inset 0 1px 0 #fff;min-width:0}
+legend{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;padding:0 6px;display:flex;align-items:center;gap:6px}
+legend .dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 1px rgba(0,0,0,.35) inset}
+legend .dot.g{background:var(--green)}
+.knobs{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;justify-content:space-around}
+.knob{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;width:64px}
+.knob.big{width:92px}
+.dial{--a0:0deg;--a1:0deg;--c:var(--acc);position:relative;width:44px;height:44px;border-radius:50%;cursor:ns-resize;touch-action:none;outline:none;
+  background:conic-gradient(from 225deg, #b9b9c0 0 var(--a0), var(--c) var(--a0) var(--a1), #b9b9c0 var(--a1) 270deg, transparent 270deg)}
+.knob.syr .dial{--c:var(--green)}
+.knob.big .dial{width:70px;height:70px}
+.dial::before{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--platinum-hi)}
+.dial .cap{position:absolute;inset:6px;border-radius:50%;
+  background:radial-gradient(circle at 50% 22%, rgba(255,255,255,.95) 0 18%, rgba(255,255,255,0) 46%), radial-gradient(circle at 50% 80%, #f7f7fa, #c8c8ce 60%, #9a9aa3);
+  box-shadow:0 2px 3px rgba(0,0,0,.35), 0 0 0 1px #7d7d86}
+.knob.big .dial .cap{inset:8px}
+.dial .ptr{position:absolute;inset:6px;border-radius:50%;pointer-events:none}
+.knob.big .dial .ptr{inset:8px}
+.dial .ptr::after{content:"";position:absolute;left:50%;top:3px;width:3px;height:30%;margin-left:-1.5px;border-radius:2px;background:#1a1a1e}
+.dial:focus-visible{box-shadow:0 0 0 2px var(--acc-dk)}
+.knob .name{font-weight:700;white-space:nowrap}
+.val{font:700 10.5px var(--ui);background:var(--inset);box-shadow:inset 0 1px 2px rgba(0,0,0,.25);border-radius:3px;padding:1px 6px;min-width:56px;text-align:center;white-space:nowrap}
+
+.seg{display:inline-flex;flex-wrap:wrap;justify-content:center;border:1px solid #7d7d86;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.seg button{font:700 11px var(--ui);border:0;padding:4px 10px;cursor:pointer;color:#222;background:linear-gradient(#fff,#d8d8dd 48%,#c4c4ca 52%,#e6e6ea)}
+.seg button+button{border-left:1px solid #9c9ca4}
+.seg button[aria-pressed="true"]{color:#2a1f00;text-shadow:0 1px 0 rgba(255,255,255,.35);background:linear-gradient(var(--acc-lt),var(--acc) 48%,var(--acc-mid) 52%,var(--acc-hi))}
+.seg.g button[aria-pressed="true"]{color:#fff;text-shadow:0 -1px 0 rgba(0,0,0,.3);background:linear-gradient(var(--green-lt),var(--green) 48%,#3e9a28 52%,#6cc653)}
+.seg button:focus-visible{outline:2px solid var(--acc-dk);outline-offset:-2px}
+.segwrap{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;font-weight:700;padding-bottom:4px}
+
+.gel{display:inline-flex;align-items:center;gap:6px;padding:6px 18px;border-radius:999px;font:700 12px var(--ui);color:#2a1f00;border:1px solid var(--acc-dk);position:relative;cursor:pointer;
+  background:linear-gradient(var(--acc-lt),var(--acc) 48%,var(--acc-mid) 52%,var(--acc-hi));box-shadow:0 2px 4px rgba(0,0,0,.3), 0 1px 0 rgba(255,255,255,.5) inset;text-shadow:0 1px 0 rgba(255,255,255,.35)}
+.gel::before{content:"";position:absolute;left:10px;right:10px;top:2px;height:45%;border-radius:999px;background:linear-gradient(rgba(255,255,255,.75),rgba(255,255,255,.1));pointer-events:none}
+.gel.green{color:#fff;border-color:var(--green-dk);text-shadow:0 -1px 0 rgba(0,0,0,.3);background:linear-gradient(var(--green-lt),var(--green) 48%,#3e9a28 52%,#6cc653)}
+.gel.grey{color:#222;border-color:#7d7d86;text-shadow:0 1px 0 #fff;background:linear-gradient(#fff,#d8d8dd 48%,#c4c4ca 52%,#e6e6ea)}
+.gel.small{padding:3px 12px;font-size:11px}
+.gel:disabled{opacity:.45;cursor:default}
+.gel:focus-visible{outline:2px solid var(--acc-dk);outline-offset:2px}
+.gel .tri{width:0;height:0;border-left:8px solid currentColor;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.gel .sq{width:9px;height:9px;background:currentColor}
+.dim{opacity:.4}
+
+/* bench extras */
+.extras{margin-top:12px;border-style:dashed;background:rgba(244,244,246,.55)}
+.extras legend{color:var(--ink-soft)}
+.prow{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.prow + .prow{margin-top:10px}
+.prow .lab{font-weight:700;min-width:84px}
+select{font:12px var(--ui);padding:3px 6px;border:1px solid #7d7d86;border-radius:4px;background:linear-gradient(#fff,#ececef);box-shadow:inset 0 1px 1px rgba(0,0,0,.08);max-width:100%}
+select:focus-visible{outline:2px solid var(--acc-dk);outline-offset:1px}
+.check{display:inline-flex;align-items:center;gap:7px;font-weight:700;cursor:pointer}
+.check input{appearance:none;-webkit-appearance:none;width:16px;height:16px;margin:0;border-radius:4px;border:1px solid #7d7d86;cursor:pointer;
+  background:linear-gradient(#fff,#d8d8dd);box-shadow:0 1px 2px rgba(0,0,0,.2);position:relative;flex:none}
+.check input:checked{border-color:var(--green-dk);background:linear-gradient(var(--green-lt),var(--green) 48%,#3e9a28 52%,#6cc653)}
+.check input:checked::after{content:"";position:absolute;left:5px;top:1px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.check input:focus-visible{box-shadow:0 0 0 2px var(--acc-dk)}
+.note{font-size:11px;color:var(--ink-soft)}
+.fname{font:11px var(--mono);color:var(--ink-soft);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srcpane[hidden]{display:none}
+.srcpane{margin-top:10px}
+.srcpane .knobs{justify-content:flex-start;gap:8px 18px}
+
+/* keyboard */
+.play{display:grid;grid-template-columns:auto 1fr;gap:10px;margin-top:14px}
+.play.dim{pointer-events:none}
+.bend{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:700;width:50px}
+.bend input{writing-mode:vertical-lr;direction:rtl;width:24px;height:96px;accent-color:var(--green)}
+.kbd{position:relative;height:118px;border-radius:6px;background:linear-gradient(#3a3a40,#1d1d22);padding:8px 8px 10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 2px 4px rgba(0,0,0,.3)}
+.keys{position:relative;height:100%}
+.key{position:absolute;top:0;bottom:0;border-radius:0 0 5px 5px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font:700 11px var(--mono);cursor:pointer;touch-action:none}
+.key.w{background:linear-gradient(#fff,#e6e6ea);border:1px solid #6e6e78;color:#6e6e78;z-index:1}
+.key.b{background:linear-gradient(#3b3b42,#111);height:62%;bottom:auto;color:#bbb;z-index:2;border:1px solid #000;font-size:10px;padding-bottom:4px}
+.key.on.w{background:linear-gradient(#e2f6d8,var(--green));color:#fff}
+.key.on.b{background:linear-gradient(var(--green-lt),var(--green-dk));color:#fff}
+.key .c{position:absolute;top:6px;font:9px var(--ui);color:#9c9ca4;font-weight:400}
+
+.foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin-top:12px;font-size:11px;color:var(--ink-soft)}
+.foot .sp{margin-left:auto}
+.err{display:none;margin-top:10px;padding:8px 10px;border-left:4px solid var(--acc-dk);background:#fbf3d9;font-size:12px}
+@media (max-width:760px){ .titlebar .tag{display:none} .views{grid-template-columns:1fr} .chans{grid-template-columns:1fr} .play{grid-template-columns:1fr} .bend{flex-direction:row;width:auto} .bend input{writing-mode:horizontal-tb;direction:ltr;width:160px;height:auto} }
+</style>
+</head>
+<body>
+<div class="window" role="application" aria-label="beak-tube test bench">
+  <div class="titlebar">
+    <span class="mark" aria-hidden="true"></span>
+    <h1>beak-tube</h1>
+    <span class="sub">Bytebent Audio<span class="ver">bench v0.1</span></span>
+    <span class="tag">a bird's vocal tract · trachea, throat, beak</span>
+  </div>
+  <div class="body">
+    <div class="screen">
+      <div class="views">
+        <div class="view">
+          <canvas id="spec" aria-label="Scrolling spectrogram of the output, 0 to 16 kHz, with the tracked pitch and the throat resonance drawn over it"></canvas>
+          <canvas id="axis" class="axis" aria-hidden="true"></canvas>
+          <span class="lbl">OUTPUT · 0–16 kHz · LAST 3 S</span>
+          <span class="key"><i style="color:var(--green-lt)">— PITCH</i><i style="color:var(--acc)">— THROAT</i></span>
+        </div>
+        <div class="view">
+          <canvas id="resp" aria-label="Response of the tract: gain against frequency, with the pitch and the throat resonance marked"></canvas>
+          <span class="lbl">TRACT · 100 Hz–16 kHz</span>
+        </div>
+      </div>
+      <div class="chans" aria-live="off">
+        <div class="chan" id="ch0"><b>LEFT</b><span><span class="p">—</span> → <span class="r">—</span></span><span class="bar" title="How sure the tracker is"><i></i></span></div>
+        <div class="chan off" id="ch1"><b>RIGHT</b><span><span class="p">—</span> → <span class="r">—</span></span><span class="bar" title="How sure the tracker is"><i></i></span></div>
+      </div>
+      <div class="readouts" aria-live="off">
+        <span title="Where the input comes from"><b>SOURCE</b><span id="roSrc" class="g">SYRINX</span></span>
+        <span title="Mono in uses one tract until Spread is up; stereo in has a tracker and a tract per side"><b>TRACTS</b><span id="roTr">—</span></span>
+        <span title="Beak opening after Gape follow, left side"><b>GAPE</b><span id="roGape">—</span></span>
+        <span title="Peak level going into beak-tube and coming out, over the last 30 ms"><b>IN</b><span id="roIn">—</span></span>
+        <span><b>OUT</b><span id="roOut">—</span></span>
+        <span title="Fixed latency: one 32-sample block plus the tracker's look-ahead, so the throat arrives on time"><b>LATENCY</b><span id="roLat">—</span></span>
+        <span title="Share of one CPU core: beak-tube alone, and with the Syrinx source. This is the JavaScript reference engine; the plugin's C++ will be lighter."><b>DSP</b><span id="roCpu">—</span></span>
+      </div>
+      <div class="power" id="power">
+        <button class="gel" id="powerBtn" type="button">Power on</button>
+        <span>SYRINX PLAYS INTO BEAK-TUBE: A–; KEYS · Z/X OCTAVE · C/V VELOCITY<br>OR LOAD A FILE, OR USE THE MICROPHONE</span>
+      </div>
+    </div>
+
+    <div class="rows">
+      <fieldset><legend><span class="dot"></span>Bird</legend><div class="knobs" id="g-bird"></div></fieldset>
+      <fieldset><legend><span class="dot"></span>Trachea</legend><div class="knobs" id="g-trachea"></div></fieldset>
+      <fieldset><legend><span class="dot"></span>Throat (OEC)</legend><div class="knobs" id="g-throat"></div></fieldset>
+      <fieldset><legend><span class="dot"></span>Beak</legend><div class="knobs" id="g-beak"></div></fieldset>
+      <fieldset><legend><span class="dot"></span>Tongue</legend><div class="knobs" id="g-tongue"></div></fieldset>
+      <fieldset><legend><span class="dot"></span>Sac</legend><div class="knobs" id="g-sac"></div></fieldset>
+      <fieldset><legend><span class="dot"></span>Body</legend><div class="knobs" id="g-body"></div></fieldset>
+      <fieldset><legend><span class="dot"></span>Output</legend><div class="knobs" id="g-out"></div></fieldset>
+    </div>
+
+    <fieldset class="extras">
+      <legend><span class="dot" style="background:#fff;box-shadow:0 0 0 1px #6e6e78 inset"></span>Bench only: input and test birds</legend>
+      <div class="prow">
+        <span class="lab">Input</span>
+        <span class="seg g" role="group" aria-label="Input" id="srcSeg"><button type="button" data-v="0" aria-pressed="true">Syrinx</button><button type="button" data-v="1" aria-pressed="false">File</button><button type="button" data-v="2" aria-pressed="false">Microphone</button></span>
+        <span class="note" id="srcNote"></span>
+      </div>
+      <div class="prow">
+        <label class="lab" for="birdSel">Test bird</label>
+        <select id="birdSel"></select>
+        <button class="gel small" id="birdPlay" type="button">Load and play</button>
+        <button class="gel grey small" id="resetAll" type="button">Reset beak-tube</button>
+      </div>
+      <div class="note" id="birdAbout" style="margin-top:6px"></div>
+
+      <div class="srcpane" id="pane0">
+        <div class="prow">
+          <label class="lab" for="presetSel">Syrinx</label>
+          <select id="presetSel"></select>
+          <button class="gel green small" id="presetLoad" type="button">Load</button>
+          <button class="gel grey small" id="presetPlay" type="button">Load and play</button>
+          <label class="check" title="Syrinx's Size moves with beak-tube's, so the same value gives the same bird"><input type="checkbox" id="linkSize" checked>Size follows beak-tube</label>
+        </div>
+        <div class="knobs" id="g-syr" style="margin-top:8px"></div>
+        <div class="note" style="margin-top:6px">Syrinx's own Filter is off here, so what you hear is beak-tube shaping its raw source. Every other Syrinx control is on Syrinx's bench.</div>
+      </div>
+      <div class="srcpane" id="pane1" hidden>
+        <div class="prow">
+          <button class="gel grey small" id="loadBtn" type="button">Load file…</button>
+          <span class="fname" id="fname">No file loaded</span>
+          <button class="gel small" id="playBtn" type="button" disabled><span class="tri" id="playIcon"></span><span id="playTxt">Play</span></button>
+          <label class="check"><input type="checkbox" id="loopChk" checked>Loop</label>
+          <input type="file" id="file" accept="audio/*,.wav,.mp3,.aif,.aiff,.flac,.ogg,.m4a" hidden>
+        </div>
+      </div>
+      <div class="srcpane" id="pane2" hidden>
+        <div class="prow">
+          <button class="gel small" id="micBtn" type="button">Start microphone</button>
+          <span class="note">Use headphones: the speakers would feed back into the microphone.</span>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="play" id="playArea">
+      <div class="bend"><span>Bend</span><input type="range" id="bend" min="-1" max="1" step="0.001" value="0" aria-label="Pitch bend for Syrinx, springs back"></div>
+      <div class="kbd"><div class="keys" id="keys"></div></div>
+    </div>
+    <div class="foot">
+      <span>Keys play Syrinx · <span id="roOct">C3</span> · velocity <span id="roVel">100</span></span>
+      <span id="footLat">Latency —</span>
+      <button class="gel grey sp" id="panic" type="button">All notes off</button>
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<script type="text/plain" id="dsp">
+/*__DSP__*/
+</script>
+<script>
+/*__PRESETS__*/
+</script>
+<script>
+(function () {
+  'use strict';
+  /* ---------- control specs (ranges match beak-tube.js) ---------- */
+  const pct = v => Math.round(v * 100) + '%';
+  const hz = f => f >= 1000 ? (f / 1000).toFixed(f >= 10000 ? 1 : 2) + ' kHz' : Math.round(f) + ' Hz';
+  const SIZES = [[0.05, 'Wren'], [0.38, 'Songbird'], [0.62, 'Dove'], [0.85, 'Large bird'], [1.01, 'Crane']];
+  const sizeScale = s => Math.pow(2, (s - 0.25) * 8 / 3);
+  const SPECS = [
+    { g: 'g-bird', type: 'knob', id: 'size', name: 'Size', min: 0, max: 1, def: 0.25, big: true, fmt: v => SIZES.find(s => v < s[0])[1] },
+    { g: 'g-bird', type: 'seg', id: 'mode', name: 'Mode', opts: ['Song', 'Parrot', 'Sac', 'Boom'], def: 0 },
+    { g: 'g-trachea', type: 'knob', id: 'trachlen', name: 'Length', long: 'Trachea length', min: 1.5, max: 200, def: 3.5, log: true,
+      fmt: v => { const cm = v * sizeScale(state.size === undefined ? 0.25 : state.size) * (state.mode === 3 ? 6 : 1); return (cm < 10 ? cm.toFixed(1) : Math.round(cm)) + ' cm'; } },
+    { g: 'g-trachea', type: 'knob', id: 'trachloss', name: 'Loss', long: 'Trachea wall loss', min: 0, max: 1, def: 0.3, fmt: pct },
+    { g: 'g-throat', type: 'knob', id: 'track', name: 'Track', min: 0, max: 1, def: 0.9, big: true, fmt: pct },
+    { g: 'g-throat', type: 'knob', id: 'tune', name: 'Tune', min: 200, max: 10000, def: 4000, log: true, fmt: hz },
+    { g: 'g-throat', type: 'knob', id: 'larynx', name: 'Larynx', min: 0, max: 1, def: 0.6, fmt: pct },
+    { g: 'g-throat', type: 'knob', id: 'lag', name: 'Lag', min: 0, max: 0.03, def: 0.005, fmt: v => v < 0.0002 ? 'Off' : (v * 1000).toFixed(1) + ' ms' },
+    { g: 'g-throat', type: 'knob', id: 'ring', name: 'Ring', min: 0, max: 1, def: 0.5, fmt: pct },
+    { g: 'g-beak', type: 'knob', id: 'gape', name: 'Gape', min: 0, max: 1, def: 0.5, fmt: pct },
+    { g: 'g-beak', type: 'knob', id: 'gapefollow', name: 'Gape follow', min: 0, max: 1, def: 0.6, fmt: pct },
+    { g: 'g-tongue', type: 'knob', id: 'tonguefb', name: 'Front–back', long: 'Tongue front to back', min: 0, max: 1, def: 0.5, fmt: v => v < 0.02 ? 'Front' : v > 0.98 ? 'Back' : pct(v) },
+    { g: 'g-tongue', type: 'knob', id: 'tongueht', name: 'Height', long: 'Tongue height', min: 0, max: 1, def: 0.3, fmt: v => v < 0.02 ? 'Low' : v > 0.98 ? 'High' : pct(v) },
+    { g: 'g-sac', type: 'knob', id: 'sactune', name: 'Sac tune', min: 200, max: 1500, def: 600, log: true, fmt: v => state.mode === 3 ? (v / 16).toFixed(1) + ' Hz' : hz(v) },
+    { g: 'g-sac', type: 'knob', id: 'inflate', name: 'Inflate', min: 0, max: 1, def: 0.8, fmt: pct },
+    { g: 'g-body', type: 'knob', id: 'body', name: 'Body', min: 0, max: 1, def: 0, fmt: v => v < 0.005 ? 'Off' : pct(v) },
+    { g: 'g-out', type: 'knob', id: 'spread', name: 'Spread', min: 0, max: 1, def: 0.2, fmt: pct },
+    { g: 'g-out', type: 'seg', id: 'radiation', name: 'Radiation', opts: ['Off', 'On'], def: 1 },
+    { g: 'g-out', type: 'knob', id: 'mix', name: 'Mix', min: 0, max: 1, def: 1, fmt: v => v < 0.005 ? 'Dry' : v > 0.995 ? 'Wet' : pct(v) },
+    { g: 'g-out', type: 'knob', id: 'output', name: 'Output', min: -24, max: 12, def: 0, bipolarAt: 0, fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) + ' dB' },
+    { g: 'g-out', type: 'seg', id: 'bypass', name: 'Bypass', opts: ['Off', 'On'], def: 0 },
+  ];
+  // a few of Syrinx's controls, for shaping the source without leaving the page
+  const SYR = [
+    { g: 'g-syr', type: 'knob', id: 'regime', name: 'Regime', min: 0, max: 1, def: 0.3, fmt: v => v < 0.02 ? 'Tonal' : v > 0.98 ? 'Rich' : 'T ' + Math.round((1 - v) * 100) + ' · R ' + Math.round(v * 100) },
+    { g: 'g-syr', type: 'knob', id: 'link', name: 'Link', min: 0, max: 1, def: 0.7, fmt: pct },
+    { g: 'g-syr', type: 'knob', id: 'pressure', name: 'Pressure', min: 0, max: 1, def: 0.7, fmt: pct },
+    { g: 'g-syr', type: 'knob', id: 'transpose', name: 'Transpose', min: -24, max: 60, def: 36, step: 1, bipolarAt: 0, fmt: v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(Math.round(v)) + ' st' },
+    { g: 'g-syr', type: 'knob', id: 'glide', name: 'Glide', min: 0, max: 2, def: 0.02, curve: 3, fmt: v => v < 0.0015 ? 'Off' : v < 1 ? Math.round(v * 1000) + ' ms' : v.toFixed(2) + ' s' },
+  ];
+
+  /* ---------- audio ---------- */
+  let ctx = null, node = null, analyser = null, ready = false, starting = null, latency = 0, sr = 48000;
+  const state = {}, syr = {};
+  const queue = [];
+  function send(msg) { if (ready) node.port.postMessage(msg); else queue.push(msg); }
+  function showError(t) { const e = document.getElementById('err'); e.style.display = 'block'; e.textContent = t; }
+
+  function start() {
+    if (starting) return starting;
+    starting = (async () => {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        ctx = new AC({ latencyHint: 'interactive' });
+        if (!ctx.audioWorklet) throw new Error('This browser has no AudioWorklet support. Try a current Chrome, Edge, Firefox or Safari.');
+        const src = document.getElementById('dsp').textContent;
+        const blobUrl = () => URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
+        const dataUrl = () => 'data:application/javascript;charset=utf-8,' + encodeURIComponent(src);
+        // file:// pages can't load blob: worklets in Chromium, http(s) pages may refuse data: in some browsers: try both
+        const tries = location.protocol === 'file:' ? [dataUrl, blobUrl] : [blobUrl, dataUrl];
+        let loaded = false, lastErr = null;
+        for (const mk of tries) { try { await ctx.audioWorklet.addModule(mk()); loaded = true; break; } catch (err) { lastErr = err; } }
+        if (!loaded) throw lastErr;
+        node = new AudioWorkletNode(ctx, 'beak-tube-bench', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+        analyser = ctx.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0;
+        analyser.minDecibels = -105; analyser.maxDecibels = -20;
+        node.connect(ctx.destination); node.connect(analyser);
+        node.port.onmessage = onMsg;
+        node.onprocessorerror = () => showError('The audio engine stopped with an error. Reload the page.');
+        sr = ctx.sampleRate;
+        ready = true;
+        node.port.postMessage({ t: 'bmany', p: allOf(SPECS, state) });
+        node.port.postMessage({ t: 'smany', p: allOf(SYR, syr) });
+        node.port.postMessage({ t: 'src', v: srcMode });
+        while (queue.length) node.port.postMessage(queue.shift());
+        if (ctx.state !== 'running') await ctx.resume();
+        document.getElementById('power').classList.add('hide');
+      } catch (err) { showError('Audio could not start: ' + (err && err.message || err)); starting = null; }
+    })();
+    return starting;
+  }
+  const allOf = (specs, st) => { const o = {}; for (const s of specs) if (s.id) o[s.id] = st[s.id]; return o; };
+  document.getElementById('powerBtn').addEventListener('click', start);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) allOff(); });
+
+  /* ---------- knobs and switches ---------- */
+  const knobs = {}, segs = {}, sknobs = {};
+  function toNorm(s, v) {
+    if (s.log) return Math.log(v / s.min) / Math.log(s.max / s.min);
+    const n = (v - s.min) / (s.max - s.min);
+    return s.curve ? Math.pow(Math.max(0, n), 1 / s.curve) : n;
+  }
+  function fromNorm(s, n) {
+    n = Math.min(1, Math.max(0, n));
+    let v = s.log ? s.min * Math.pow(s.max / s.min, n) : s.min + (s.max - s.min) * (s.curve ? Math.pow(n, s.curve) : n);
+    if (s.step) v = Math.round(v / s.step) * s.step;
+    return v;
+  }
+  // target: 'b' beak-tube, 's' Syrinx
+  function makeKnob(s, host, target) {
+    const st = target === 's' ? syr : state, reg = target === 's' ? sknobs : knobs;
+    const el = document.createElement('div');
+    el.className = 'knob' + (s.big ? ' big' : '') + (target === 's' ? ' syr' : '');
+    el.innerHTML = '<div class="dial" tabindex="0" role="slider"><div class="cap"></div><div class="ptr"></div></div><span class="name"></span><span class="val"></span>';
+    const dial = el.firstChild, valEl = el.children[2];
+    el.children[1].textContent = s.name;
+    dial.setAttribute('aria-label', (target === 's' ? 'Syrinx ' : '') + (s.long || s.name));
+    host.appendChild(el);
+    const k = { s, el, dial, valEl, norm: toNorm(s, s.def) };
+    k.show = () => { const t = s.fmt(st[s.id]); valEl.textContent = t; dial.setAttribute('aria-valuetext', t); };
+    k.set = (n, quiet) => {
+      k.norm = Math.min(1, Math.max(0, n));
+      const v = fromNorm(s, k.norm);
+      if (s.step) k.norm = toNorm(s, v);
+      st[s.id] = v;
+      const nn = k.norm;
+      let a0 = 0, a1 = nn;
+      if (s.bipolarAt !== undefined) { const c = s.bipolarAt === 0 ? toNorm(s, 0) : s.bipolarAt; a0 = Math.min(nn, c); a1 = Math.max(nn, c); }
+      dial.style.setProperty('--a0', (a0 * 270) + 'deg');
+      dial.style.setProperty('--a1', (a1 * 270) + 'deg');
+      dial.querySelector('.ptr').style.transform = 'rotate(' + (-135 + nn * 270) + 'deg)';
+      dial.setAttribute('aria-valuenow', v.toFixed(3));
+      k.show();
+      if (!quiet) send({ t: target, id: s.id, v });
+      if (target === 'b') {
+        if (s.id === 'size') { if (knobs.trachlen) knobs.trachlen.show(); if (linkEl.checked) setSyr('size', v, quiet); }
+        updateDims();
+      }
+    };
+    let dragY = null, startN = 0;
+    dial.addEventListener('pointerdown', e => { dial.setPointerCapture(e.pointerId); dragY = e.clientY; startN = k.norm; dial.focus(); e.preventDefault(); });
+    dial.addEventListener('pointermove', e => {
+      if (dragY === null) return;
+      const d = (dragY - e.clientY) * (e.shiftKey ? 0.0008 : 0.005);
+      k.set(startN + d);
+      if (e.shiftKey) { dragY = e.clientY; startN = k.norm; }
+    });
+    const end = () => { dragY = null; };
+    dial.addEventListener('pointerup', end); dial.addEventListener('pointercancel', end);
+    dial.addEventListener('dblclick', () => k.set(toNorm(s, s.def)));
+    dial.addEventListener('wheel', e => { e.preventDefault(); k.set(k.norm - Math.sign(e.deltaY) * (e.shiftKey ? 0.005 : 0.03)); }, { passive: false });
+    dial.addEventListener('keydown', e => {
+      const stp = s.step ? 1 / ((s.max - s.min) / s.step) : (e.shiftKey ? 0.005 : 0.02);
+      let used = true;
+      if (e.key === 'ArrowUp' || e.key === 'ArrowRight') k.set(k.norm + stp);
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') k.set(k.norm - stp);
+      else if (e.key === 'Home') k.set(0);
+      else if (e.key === 'End') k.set(1);
+      else used = false;
+      if (used) { e.preventDefault(); e.stopPropagation(); }
+    });
+    reg[s.id] = k;
+    k.set(k.norm, true);
+  }
+  function makeSeg(s, host) {
+    const w = document.createElement('div'); w.className = 'segwrap';
+    w.innerHTML = '<span></span><div class="seg" role="group"></div>';
+    w.firstChild.textContent = s.name;
+    const seg = w.lastChild; seg.setAttribute('aria-label', s.name);
+    const btns = s.opts.map((o, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = o; b.dataset.v = i; seg.appendChild(b); return b; });
+    host.appendChild(w);
+    const g = { s, el: w };
+    g.set = (v, quiet) => {
+      v = Math.round(v); state[s.id] = v;
+      btns.forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === v)));
+      if (!quiet) send({ t: 'b', id: s.id, v });
+      if (s.id === 'mode') { if (knobs.trachlen) knobs.trachlen.show(); if (knobs.sactune) knobs.sactune.show(); }
+      updateDims();
+    };
+    btns.forEach(b => b.addEventListener('click', () => g.set(+b.dataset.v)));
+    segs[s.id] = g;
+    g.set(s.def, true);
+  }
+  const linkEl = document.getElementById('linkSize');
+  for (const s of SYR) makeKnob(s, document.getElementById(s.g), 's');
+  syr.size = 0.25;
+  for (const s of SPECS) { const host = document.getElementById(s.g); if (s.type === 'knob') makeKnob(s, host, 'b'); else makeSeg(s, host); }
+  linkEl.addEventListener('change', () => { if (linkEl.checked) setSyr('size', state.size); });
+  function setSyr(id, v, quiet) {
+    syr[id] = v;
+    if (sknobs[id]) sknobs[id].set(toNorm(sknobs[id].s, v), quiet);
+    else if (!quiet) send({ t: 's', id, v });
+  }
+
+  function dim(id, off, why) {
+    const t = knobs[id] || segs[id]; if (!t) return;
+    t.el.classList.toggle('dim', off); t.el.title = off ? why : '';
+  }
+  function updateDims() {
+    if (Object.keys(state).length < SPECS.length) return;
+    const m = state.mode, song = m === 0, sac = m >= 2;
+    for (const id of ['track', 'larynx', 'lag']) dim(id, !song, 'Works in Song mode');
+    dim('tune', !song || state.track > 0.995, song ? 'Track is at 100%: the throat follows the pitch only' : 'Works in Song mode');
+    dim('ring', sac, 'Song and Parrot: Sac and Boom use Inflate');
+    dim('gape', sac, 'The beak is closed in Sac and Boom'); dim('gapefollow', sac || m === 1, sac ? 'The beak is closed in Sac and Boom' : 'Gape follow uses the tracked pitch (Song)');
+    dim('tonguefb', m !== 1, 'Works in Parrot mode'); dim('tongueht', m !== 1, 'Works in Parrot mode');
+    dim('sactune', !sac, 'Works in Sac and Boom'); dim('inflate', !sac, 'Works in Sac and Boom');
+    dim('body', m === 3 && state.body < 0.5, '');
+  }
+  updateDims();
+
+  function setValue(id, v, quiet) {
+    if (segs[id]) segs[id].set(v, quiet);
+    else if (knobs[id]) knobs[id].set(toNorm(knobs[id].s, v), quiet);
+  }
+  function resetAll() { for (const s of SPECS) setValue(s.id, s.def, true); send({ t: 'bmany', p: allOf(SPECS, state) }); }
+  document.getElementById('resetAll').addEventListener('click', resetAll);
+
+  /* ---------- input: Syrinx, a file or the microphone ---------- */
+  let srcMode = 0, fileBuf = null, player = null, mic = null, micNode = null;
+  const srcBtns = document.querySelectorAll('#srcSeg button'), srcNote = document.getElementById('srcNote');
+  const NOTES = ['Syrinx plays into beak-tube with its Filter off. Play the keys.', 'An audio file runs through beak-tube. Mono files stay mono until Spread is up; stereo stays stereo.', 'Your microphone runs through beak-tube. Try whistling: the throat follows.'];
+  function setSrc(v) {
+    srcMode = v;
+    srcBtns.forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === v)));
+    for (let i = 0; i < 3; i++) document.getElementById('pane' + i).hidden = i !== v;
+    document.getElementById('playArea').classList.toggle('dim', v !== 0);
+    srcNote.textContent = NOTES[v];
+    document.getElementById('roSrc').textContent = ['SYRINX', 'FILE', 'MIC'][v];
+    if (v !== 0) { stopPhrase(); releaseKeys(); }
+    if (v !== 1) stopFile();
+    if (v !== 2) stopMic();
+    send({ t: 'src', v });
+  }
+  srcBtns.forEach(b => b.addEventListener('click', () => setSrc(+b.dataset.v)));
+  srcNote.textContent = NOTES[0];
+
+  const fileIn = document.getElementById('file'), playBtn = document.getElementById('playBtn');
+  document.getElementById('loadBtn').addEventListener('click', () => fileIn.click());
+  fileIn.addEventListener('change', async () => {
+    const f = fileIn.files && fileIn.files[0];
+    fileIn.value = '';
+    if (!f) return;
+    await start();
+    if (!ctx) return;
+    try {
+      const data = await f.arrayBuffer();
+      const buf = await new Promise((res, rej) => { const p = ctx.decodeAudioData(data, res, rej); if (p && p.catch) p.catch(rej); });
+      stopFile();
+      fileBuf = buf;
+      const fn = document.getElementById('fname');
+      fn.textContent = f.name + ' · ' + buf.duration.toFixed(1) + ' s · ' + (buf.numberOfChannels > 1 ? 'stereo' : 'mono');
+      fn.title = f.name;
+      playBtn.disabled = false;
+    } catch (err) { showError('Could not read that file as audio: ' + (err && err.message || err)); }
+  });
+  function setPlayUi(playing) {
+    document.getElementById('playIcon').className = playing ? 'sq' : 'tri';
+    document.getElementById('playTxt').textContent = playing ? 'Stop' : 'Play';
+  }
+  function stopFile() {
+    if (player) { const p = player; player = null; p.onended = null; try { p.stop(); } catch (e) {} p.disconnect(); }
+    setPlayUi(false);
+  }
+  playBtn.addEventListener('click', async () => {
+    if (player) { stopFile(); return; }
+    if (!fileBuf) return;
+    await start();
+    if (!ready) return;
+    const p = ctx.createBufferSource();
+    p.buffer = fileBuf; p.loop = document.getElementById('loopChk').checked;
+    p.connect(node);
+    p.onended = () => { if (player === p) { player = null; p.disconnect(); setPlayUi(false); } };
+    player = p;
+    p.start();
+    setPlayUi(true);
+  });
+  document.getElementById('loopChk').addEventListener('change', e => { if (player) player.loop = e.target.checked; });
+
+  const micBtn = document.getElementById('micBtn');
+  function stopMic() {
+    if (micNode) { micNode.disconnect(); micNode = null; }
+    if (mic) { mic.getTracks().forEach(t => t.stop()); mic = null; }
+    micBtn.textContent = 'Start microphone';
+  }
+  micBtn.addEventListener('click', async () => {
+    if (mic) { stopMic(); return; }
+    await start();
+    if (!ready) return;
+    try {
+      mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      micNode = ctx.createMediaStreamSource(mic);
+      micNode.connect(node);
+      micBtn.textContent = 'Stop microphone';
+    } catch (err) { stopMic(); showError('The microphone could not start: ' + (err && err.message || err)); }
+  });
+
+  /* ---------- Syrinx test presets and test birds ---------- */
+  const PRESETS = window.SyrinxPresets || [];
+  const sel = document.getElementById('presetSel');
+  PRESETS.forEach((p, i) => { const o = document.createElement('option'); o.value = i; o.textContent = (i + 1) + '. ' + p.name; sel.appendChild(o); });
+  sel.addEventListener('keydown', e => e.stopPropagation());
+  let timers = [], sweepTimer = null;
+  function stopPhrase() {
+    timers.forEach(clearTimeout); timers = [];
+    if (sweepTimer) { clearInterval(sweepTimer); sweepTimer = null; }
+  }
+  // Syrinx back to its defaults, then the preset's settings (Filter stays off), keeping the size link
+  function loadSyrinx(params) {
+    stopPhrase(); allOff();
+    for (const s of SYR) setSyr(s.id, s.def, true);
+    const p = Object.assign({}, params || {});
+    for (const k in p) { if (sknobs[k]) setSyr(k, p[k], true); }
+    if (linkEl.checked) p.size = state.size;
+    send({ t: 'sreset', p: Object.assign(allOf(SYR, syr), p) });
+  }
+  // play a phrase: notes at their times, a sweep across the phrase, a switch at its time
+  function playPhrase(pr) {
+    if (!pr.phrase) return;
+    const end = Math.max(...pr.phrase.map(([, t, d]) => t + d));
+    for (const [n, t, d] of pr.phrase) {
+      timers.push(setTimeout(() => send({ t: 'on', n, v: 100 }), t * 1000));
+      timers.push(setTimeout(() => send({ t: 'off', n }), (t + d) * 1000));
+    }
+    const sw = pr.sweep;
+    if (sw) {
+      const t0 = performance.now();
+      sweepTimer = setInterval(() => {
+        const u = Math.min(1, (performance.now() - t0) / 1000 / end), v = sw.from + (sw.to - sw.from) * u;
+        if (sw.bt) setValue(sw.id, v); else setSyr(sw.id, v);
+        if (u >= 1) { clearInterval(sweepTimer); sweepTimer = null; }
+      }, 30);
+    }
+  }
+  const selected = () => PRESETS[+sel.value];
+  document.getElementById('presetLoad').addEventListener('click', () => { const pr = selected(); if (pr) loadSyrinx(pr.params); });
+  document.getElementById('presetPlay').addEventListener('click', async () => {
+    await start(); const pr = selected(); if (!pr) return;
+    if (srcMode !== 0) setSrc(0);
+    loadSyrinx(pr.params); playPhrase(pr);
+  });
+
+  // test birds: beak-tube settings with a Syrinx source and phrase (bench only)
+  const byName = n => PRESETS.find(p => p.name === n) || { params: {} };
+  const BIRDS = [
+    { name: 'Finch: the throat follows', about: 'Defaults: Track 90%. Syrinx\'s finch fingerprint, a scale over four octaves: low notes buzz, high notes whistle, and the throat sits on each note.',
+      bt: {}, syr: byName('Link (finch fingerprint)').params, phrase: byName('Link (finch fingerprint)').phrase },
+    { name: 'Finch: throat fixed (Track 0)', about: 'The same scale with the throat parked at Tune (4 kHz): the harmonics come through, so it buzzes. Compare with the one above.',
+      bt: { track: 0 }, syr: byName('Link (finch fingerprint)').params, phrase: byName('Link (finch fingerprint)').phrase },
+    { name: 'Cardinal sweeps', about: 'Fast wide sweeps from Syrinx with Lag off: the throat follows the whole way (Riede et al. 2006 measured cardinals tracking from about 1.6 to 8 kHz).',
+      bt: { track: 1, lag: 0 }, syr: byName('Cardinal sweeps').params, phrase: byName('Cardinal sweeps').phrase },
+    { name: 'Buzz into a parakeet', about: 'Parrot mode on a rich Syrinx buzz, short trachea. The tongue moves from front to back across the phrase: listen to the third formant fall about 2 kHz.',
+      bt: { mode: 1, trachlen: 1.5, tongueht: 0.1 }, syr: Object.assign({}, byName('Buzz (SNILC)').params, { transpose: 12 }), phrase: [[60, 0, 3.2]],
+      sweep: { id: 'tonguefb', from: 0, to: 1, bt: true } },
+    { name: 'Dove coo', about: 'Sac mode at the Dove size: a narrow resonance near 600 Hz through an inflated esophagus, beak closed (Fletcher et al. 2004).',
+      bt: { mode: 2, size: 0.55 }, syr: { regime: 0.5, link: 0, attack: 0.08, release: 0.15, transpose: 36 }, phrase: [[48, 0, 0.35], [48, 0.5, 0.9], [46, 1.55, 0.3], [48, 2.0, 0.8]] },
+  ];
+  const bsel = document.getElementById('birdSel'), babout = document.getElementById('birdAbout');
+  BIRDS.forEach((b, i) => { const o = document.createElement('option'); o.value = i; o.textContent = b.name; bsel.appendChild(o); });
+  bsel.addEventListener('keydown', e => e.stopPropagation());
+  const showAbout = () => { babout.textContent = BIRDS[+bsel.value].about; };
+  bsel.addEventListener('change', showAbout); showAbout();
+  document.getElementById('birdPlay').addEventListener('click', async () => {
+    await start(); const b = BIRDS[+bsel.value];
+    if (srcMode !== 0) setSrc(0);
+    resetAll();
+    for (const k in b.bt) setValue(k, b.bt[k]);
+    loadSyrinx(b.syr); playPhrase(b);
+  });
+
+  /* ---------- pitch bend ---------- */
+  const bendEl = document.getElementById('bend');
+  const sendBend = () => send({ t: 'bend', v: +bendEl.value });
+  bendEl.addEventListener('input', sendBend);
+  const springBack = () => { bendEl.value = 0; sendBend(); };
+  bendEl.addEventListener('pointerup', springBack); bendEl.addEventListener('pointercancel', springBack);
+  bendEl.addEventListener('keydown', e => e.stopPropagation()); bendEl.addEventListener('keyup', e => { e.stopPropagation(); springBack(); });
+
+  /* ---------- PC keyboard as a MIDI keyboard (Ableton layout), playing Syrinx ---------- */
+  const KEYMAP = { KeyA: 0, KeyW: 1, KeyS: 2, KeyE: 3, KeyD: 4, KeyF: 5, KeyT: 6, KeyG: 7, KeyY: 8, KeyH: 9, KeyU: 10, KeyJ: 11,
+                   KeyK: 12, KeyO: 13, KeyL: 14, KeyP: 15, Semicolon: 16 };
+  const KEYCAP = { KeyA: 'A', KeyW: 'W', KeyS: 'S', KeyE: 'E', KeyD: 'D', KeyF: 'F', KeyT: 'T', KeyG: 'G', KeyY: 'Y', KeyH: 'H', KeyU: 'U', KeyJ: 'J',
+                   KeyK: 'K', KeyO: 'O', KeyL: 'L', KeyP: 'P', Semicolon: ';' };
+  const VELS = [1, 20, 40, 60, 80, 100, 127];
+  let octave = 3, velIdx = 5;                 // Ableton naming: C3 = MIDI 60 (about 2.1 kHz at Syrinx's default Transpose)
+  const down = new Map(), sounding = new Map();
+  const noteName = m => ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][((m % 12) + 12) % 12] + (Math.floor(m / 12) - 2);
+  function baseNote() { return (octave + 2) * 12; }
+  function noteOn(srcKey, midi) {
+    if (srcMode !== 0 || down.has(srcKey) || midi < 0 || midi > 127) return;
+    start();
+    down.set(srcKey, midi);
+    sounding.set(midi, (sounding.get(midi) || 0) + 1);
+    send({ t: 'on', n: midi, v: VELS[velIdx] });
+    paintKeys();
+  }
+  function noteOff(srcKey) {
+    if (!down.has(srcKey)) return;
+    const midi = down.get(srcKey); down.delete(srcKey);
+    const c = (sounding.get(midi) || 1) - 1;
+    if (c <= 0) { sounding.delete(midi); send({ t: 'off', n: midi }); } else sounding.set(midi, c);
+    paintKeys();
+  }
+  function releaseKeys() { down.clear(); sounding.clear(); paintKeys(); }
+  function allOff() { releaseKeys(); send({ t: 'panic' }); }
+  document.getElementById('panic').addEventListener('click', () => { stopPhrase(); allOff(); });
+  window.addEventListener('blur', allOff);
+  window.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target && (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT')) return;
+    if (e.code in KEYMAP) { e.preventDefault(); if (!e.repeat) noteOn(e.code, baseNote() + KEYMAP[e.code]); return; }
+    if (e.repeat) return;
+    if (e.code === 'KeyZ') octave = Math.max(-2, octave - 1);
+    else if (e.code === 'KeyX') octave = Math.min(8, octave + 1);
+    else if (e.code === 'KeyC') velIdx = Math.max(0, velIdx - 1);
+    else if (e.code === 'KeyV') velIdx = Math.min(VELS.length - 1, velIdx + 1);
+    else return;
+    e.preventDefault();
+    updateKeyLabels();
+  });
+  window.addEventListener('keyup', e => { if (e.code in KEYMAP) noteOff(e.code); });
+
+  const keysEl = document.getElementById('keys'), keyEls = [];
+  const whiteSemis = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16];
+  const isBlack = s => [1, 3, 6, 8, 10, 13, 15].includes(s);
+  Object.keys(KEYMAP).forEach(code => {
+    const semi = KEYMAP[code], el = document.createElement('div');
+    el.className = 'key ' + (isBlack(semi) ? 'b' : 'w');
+    el.dataset.semi = semi;
+    el.innerHTML = '<span class="c"></span>' + KEYCAP[code];
+    if (isBlack(semi)) { const left = whiteSemis.filter(w => w < semi).length; el.style.left = 'calc(' + (left * 10) + '% - 3.2%)'; el.style.width = '6.4%'; }
+    else { el.style.left = (whiteSemis.indexOf(semi) * 10) + '%'; el.style.width = '10%'; }
+    const pid = 'ptr' + semi;
+    el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); noteOn(pid, baseNote() + semi); e.preventDefault(); });
+    const up = () => noteOff(pid);
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+    keysEl.appendChild(el); keyEls.push(el);
+  });
+  function paintKeys() { const b = baseNote(); for (const el of keyEls) el.classList.toggle('on', sounding.has(b + +el.dataset.semi)); }
+  function updateKeyLabels() {
+    const b = baseNote();
+    for (const el of keyEls) { const s = +el.dataset.semi; el.firstChild.textContent = (s % 12 === 0) ? noteName(b + s) : ''; }
+    document.getElementById('roOct').textContent = noteName(b);
+    document.getElementById('roVel').textContent = VELS[velIdx];
+    paintKeys();
+  }
+  updateKeyLabels();
+
+  /* ---------- live view ---------- */
+  const chEls = [0, 1].map(j => { const el = document.getElementById('ch' + j); return { el, p: el.querySelector('.p'), r: el.querySelector('.r'), bar: el.querySelector('.bar i') }; });
+  const noteOf = f => { const m = 69 + 12 * Math.log2(f / 440), r = Math.round(m), c = Math.round((m - r) * 100); return noteName(r) + (c ? ' ' + (c > 0 ? '+' : '−') + Math.abs(c) : ''); };
+  const dbs = v => v < 1e-5 ? '−∞' : (20 * Math.log10(v)).toFixed(0) + ' dB';
+  let last = null, freqs = null;
+  function onMsg(e) {
+    const m = e.data;
+    if (m.t === 'ready') {
+      latency = m.latency; freqs = m.freqs;
+      const t = latency + ' samples · ' + (latency / m.sr * 1000).toFixed(1) + ' ms';
+      document.getElementById('roLat').textContent = t; document.getElementById('footLat').textContent = 'Latency ' + t;
+      return;
+    }
+    if (m.t !== 'stat') return;
+    last = m;
+    for (let c = 0; c < 2; c++) {
+      const live = !m.idle && (c === 0 || m.two), sure = m.sure[c];
+      chEls[c].el.classList.toggle('off', !live);
+      chEls[c].p.textContent = live && m.f[c] > 0 ? (sure ? '' : '(') + hz(m.f[c]) + ' ' + noteOf(m.f[c]) + (sure ? '' : ' held)') : '—';
+      chEls[c].r.textContent = live ? 'throat ' + hz(m.res[c]) : '—';
+      chEls[c].bar.style.width = (live ? Math.round(m.conf[c] * 100) : 0) + '%';
+    }
+    document.getElementById('roTr').textContent = m.idle ? 'IDLE' : m.stereo ? '2 · STEREO IN' : m.two ? '2 · MONO IN, SPREAD' : '1 · MONO';
+    document.getElementById('roGape').textContent = state.mode >= 2 ? 'CLOSED' : Math.round(m.gape[0] * 100) + '%';
+    document.getElementById('roIn').textContent = dbs(m.inPk);
+    document.getElementById('roOut').textContent = dbs(m.outPk);
+    const pc = v => (v * 100).toFixed(v < 0.1 ? 1 : 0) + '%', cpu = document.getElementById('roCpu');
+    cpu.textContent = pc(m.btLoad) + (srcMode === 0 ? ' · +SYRINX ' + pc(m.load) : '');
+    cpu.className = m.load > 0.5 ? 'warn' : '';
+    drawResp();
+  }
+
+  // spectrogram with the tracked pitch (green) and the throat resonance (yellow) painted into each column
+  const spec = document.getElementById('spec'), axis = document.getElementById('axis');
+  const sx = spec.getContext('2d'), ax = axis.getContext('2d');
+  const FTOP = 16000;
+  let fbuf = null, col = null;
+  // colour map: black → deep amber → bytebent yellow → white
+  const STOPS = [[0, 6, 6, 8], [0.35, 58, 42, 6], [0.7, 196, 146, 20], [1, 255, 248, 220]];
+  const LUT = new Uint8ClampedArray(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255; let a = STOPS[0], b = STOPS[STOPS.length - 1];
+    for (let s = 0; s < STOPS.length - 1; s++) if (t >= STOPS[s][0] && t <= STOPS[s + 1][0]) { a = STOPS[s]; b = STOPS[s + 1]; break; }
+    const u = (t - a[0]) / Math.max(1e-6, b[0] - a[0]);
+    for (let c = 0; c < 3; c++) LUT[i * 3 + c] = a[c + 1] + (b[c + 1] - a[c + 1]) * u;
+  }
+  function fitCanvases() {
+    const r = spec.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    const w = Math.round(r.width * d), h = Math.round(r.height * d);
+    if (spec.width !== w || spec.height !== h) {
+      spec.width = w; spec.height = h; axis.width = w; axis.height = h;
+      sx.fillStyle = '#060608'; sx.fillRect(0, 0, w, h);
+      col = sx.createImageData(1, h);
+      ax.clearRect(0, 0, w, h);
+      ax.font = (9 * d) + 'px Monaco, monospace'; ax.textAlign = 'right';
+      for (const f of [2000, 4000, 8000, 12000, 16000]) {
+        const y = h - f / FTOP * (h - 2) - 1;
+        ax.fillStyle = 'rgba(246,220,122,.14)'; ax.fillRect(0, Math.round(y), w, 1);
+        ax.fillStyle = 'rgba(246,220,122,.7)'; ax.fillText((f / 1000) + 'k', w - 4 * d, Math.max(10 * d, y - 3 * d));
+      }
+    }
+    return d;
+  }
+  function paint(data, H, f, rgb, d) {
+    if (!(f > 0) || f >= FTOP) return;
+    const yc = Math.round(H - f / FTOP * H);
+    for (let y = yc - Math.round(d); y <= yc + Math.round(d); y++) if (y >= 0 && y < H) { const o = y * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; }
+  }
+  function drawSpec(stepPx) {
+    const d = fitCanvases(), W = spec.width, H = spec.height;
+    const step = Math.max(1, Math.round(stepPx * d));
+    sx.drawImage(spec, -step, 0);
+    if (!analyser) { sx.fillStyle = '#060608'; sx.fillRect(W - step, 0, step, H); return; }
+    if (!fbuf) fbuf = new Float32Array(analyser.frequencyBinCount);
+    analyser.getFloatFrequencyData(fbuf);
+    const binHz = ctx.sampleRate / analyser.fftSize, lo = analyser.minDecibels, hi = analyser.maxDecibels;
+    const data = col.data;
+    for (let y = 0; y < H; y++) {
+      const fTop = (H - y) / H * FTOP, fBot = (H - y - 1) / H * FTOP;
+      let b0 = Math.floor(fBot / binHz), b1 = Math.max(b0 + 1, Math.ceil(fTop / binHz)), m = -200;
+      for (let b = b0; b < b1 && b < fbuf.length; b++) if (fbuf[b] > m) m = fbuf[b];
+      const t = Math.min(1, Math.max(0, (m - lo) / (hi - lo)));
+      const li = Math.round(Math.pow(t, 1.1) * 255) * 3;
+      const o = y * 4; data[o] = LUT[li]; data[o + 1] = LUT[li + 1]; data[o + 2] = LUT[li + 2]; data[o + 3] = 255;
+    }
+    if (last && !last.idle && state.bypass !== 1) {
+      paint(data, H, last.res[0], [246, 200, 40], d * 1.2);   // throat under, pitch on top
+      if (state.mode === 0 && last.f[0] > 0) paint(data, H, last.f[0], last.sure[0] ? [169, 224, 143] : [70, 110, 60], d * 0.4);
+    }
+    for (let s = 0; s < step; s++) sx.putImageData(col, W - step + s, 0);
+  }
+
+  // response curve
+  const resp = document.getElementById('resp'), rx = resp.getContext('2d');
+  const DB_TOP = 24, DB_BOT = -36, RF0 = 100, RF1 = 16000;
+  function drawResp() {
+    const r = resp.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    const W = Math.round(r.width * d), H = Math.round(r.height * d);
+    if (resp.width !== W || resp.height !== H) { resp.width = W; resp.height = H; }
+    rx.clearRect(0, 0, W, H); rx.fillStyle = '#060608'; rx.fillRect(0, 0, W, H);
+    const X = f => Math.log(f / RF0) / Math.log(RF1 / RF0) * W, Y = db => (DB_TOP - db) / (DB_TOP - DB_BOT) * H;
+    rx.font = (9 * d) + 'px Monaco, monospace'; rx.textAlign = 'left';
+    for (const f of [200, 500, 1000, 2000, 5000, 10000]) {
+      rx.fillStyle = 'rgba(246,220,122,.12)'; rx.fillRect(Math.round(X(f)), 0, 1, H);
+      rx.fillStyle = 'rgba(246,220,122,.6)'; rx.fillText(f >= 1000 ? (f / 1000) + 'k' : String(f), X(f) + 3 * d, H - 4 * d);
+    }
+    for (const db of [12, 0, -12, -24]) {
+      rx.fillStyle = db === 0 ? 'rgba(246,220,122,.3)' : 'rgba(246,220,122,.1)'; rx.fillRect(0, Math.round(Y(db)), W, 1);
+      rx.fillStyle = 'rgba(246,220,122,.6)'; rx.fillText((db > 0 ? '+' : '') + db, 3 * d, Y(db) - 3 * d);
+    }
+    if (!last || !freqs) return;
+    const line = (arr, color, wdt) => {
+      rx.strokeStyle = color; rx.lineWidth = wdt * d; rx.beginPath();
+      arr.forEach((v, i) => { const x = X(freqs[i]), y = Math.max(-2, Math.min(H + 2, Y(v))); i ? rx.lineTo(x, y) : rx.moveTo(x, y); });
+      rx.stroke();
+    };
+    if (state.mode === 0 && last.f[0] > 0 && !last.idle) { rx.fillStyle = last.sure[0] ? 'rgba(169,224,143,.85)' : 'rgba(169,224,143,.35)'; rx.fillRect(Math.round(X(last.f[0])) - d, 0, 2 * d, H); }
+    if (last.rR) line(last.rR, 'rgba(246,200,40,.35)', 1.5);
+    rx.shadowColor = '#d9a514'; rx.shadowBlur = 6 * d;
+    line(last.rL, '#f2c230', 2);
+    rx.shadowBlur = 0;
+  }
+  window.addEventListener('resize', drawResp);
+  drawResp();
+
+  const slow = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let lastT = 0;
+  function frame(t) {
+    if (!slow || t - lastT > 250) {
+      const dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 1 / 60; lastT = t;
+      const pxPerSec = spec.getBoundingClientRect().width / 3;
+      drawSpec(Math.max(1, pxPerSec * dt));
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
